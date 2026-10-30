@@ -1,13 +1,13 @@
-"""Goal tracker built with PySide6 / Qt (no tkinter).
+"""Goal tracker built with PySide6 / Qt
 
 Install:  pip install PySide6
-Run:      python goal_tracker_qt.py
+Run:      python main.py
 
 Features
   - Any number of goal tabs: add, rename (double-click a tab), reorder (drag), remove
   - Each goal defines what it tracks: time (logged in minutes, shown in hours)
     or a custom unit such as pages, calls or modules
-  - Every logged session needs an amount and an activity description
+  - Every logged session needs an amount and an activity description, and can be dated in the past
   - Export a formatted PDF progress report (summary, totals by month, activity log)
   - Data is stored in goals.json next to this script. Files from earlier
     versions are migrated automatically.
@@ -629,6 +629,12 @@ class GoalTab(QWidget):
 
         # --- Log form ---
         form = QHBoxLayout()
+        self.date_edit = QDateEdit()
+        self.date_edit.setCalendarPopup(True)
+        self.date_edit.setDisplayFormat("MMM d, yyyy")
+        self.date_edit.setFixedWidth(130)
+        self.date_edit.setToolTip("The date the activity was done")
+        self.reset_date()
         self.amount_edit = QLineEdit()
         self.amount_edit.setPlaceholderText("Minutes" if is_time(goal) else f"Amount ({goal['unit']})")
         self.amount_edit.setFixedWidth(130)
@@ -640,6 +646,7 @@ class GoalTab(QWidget):
         for w in (self.amount_edit, self.note_edit):
             w.returnPressed.connect(self.add_session)
         log_btn.clicked.connect(self.add_session)
+        form.addWidget(self.date_edit)
         form.addWidget(self.amount_edit)
         form.addWidget(self.note_edit, 1)
         form.addWidget(log_btn)
@@ -681,14 +688,21 @@ class GoalTab(QWidget):
         self.error_label.setText("")
         key = "minutes" if is_time(self.goal) else "amount"
         self.goal["sessions"].append({
-            "date": date.today().isoformat(),
+            "date": self.date_edit.date().toString("yyyy-MM-dd"),
             key: amount,
             "note": activity,
         })
         self.amount_edit.clear()
         self.note_edit.clear()
+        self.reset_date()
         self.on_change()
         self.refresh()
+
+    def reset_date(self):
+        """Default to today; the picker doesn't allow future dates."""
+        today = QDate.currentDate()
+        self.date_edit.setMaximumDate(today)
+        self.date_edit.setDate(today)
 
     def delete_session(self, index):
         del self.goal["sessions"][index]
@@ -729,7 +743,9 @@ class GoalTab(QWidget):
             empty.setAlignment(Qt.AlignCenter)
             self.history_layout.addWidget(empty)
         else:
-            for i in reversed(range(len(sessions))):
+            # Newest date first; for the same date, the most recently logged first.
+            order = sorted(range(len(sessions)), key=lambda i: (sessions[i]["date"], i), reverse=True)
+            for i in order:
                 self.history_layout.addWidget(self._make_row(i, sessions[i]))
         self.history_layout.addStretch()
 

@@ -12,7 +12,7 @@ Built with Python and PySide6 (Qt). Works on Windows and Linux.
 
 - Add, rename (double-click a tab), reorder (drag) and remove goal tabs
 - Per-goal targets with a progress bar
-- Required activity description on every session
+- Required activity description on every session, with a date picker for logging past activities
 - PDF report with a summary, totals by month and a full activity log,
   filterable by date range and goal
 - Data saved to `goals.json` next to `main.py`
