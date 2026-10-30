@@ -1,0 +1,19 @@
+# Your personal goal data (created by the app next to main.py)
+goals.json
+goals.json.tmp
+goals.json.corrupt
+
+# Exported reports
+goal_report_*.pdf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
