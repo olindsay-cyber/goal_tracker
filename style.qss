@@ -1,0 +1,40 @@
+QWidget { background: #14151a; color: #e6e7eb; font-size: 13px; }
+QLabel { background: transparent; }
+QTabWidget::pane { border: none; }
+QTabBar::tab {
+    background: transparent; color: #8b8fa3; padding: 10px 20px;
+    font-weight: 600; border-bottom: 2px solid transparent;
+}
+QTabBar::tab:selected { color: #ffffff; border-bottom: 2px solid #e6e7eb; }
+QTabBar::tab:hover { color: #ffffff; }
+QFrame#card, QFrame#row { background: #1e2028; border-radius: 14px; }
+QFrame#row { border-radius: 10px; }
+QLineEdit, QDateEdit, QComboBox {
+    background: #1e2028; border: 1px solid #2c2f3a; border-radius: 8px; padding: 8px 10px;
+}
+QLineEdit:focus, QDateEdit:focus, QComboBox:focus { border: 1px solid #5a5f78; }
+QLineEdit:disabled { color: #5a5f78; }
+QComboBox QAbstractItemView {
+    background: #1e2028; border: 1px solid #2c2f3a; selection-background-color: #383c4b;
+}
+QPushButton {
+    background: #2c2f3a; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 600;
+}
+QPushButton:hover { background: #383c4b; }
+QPushButton#primary { background: #e6e7eb; color: #14151a; }
+QPushButton#primary:hover { background: #ffffff; }
+QPushButton#danger { background: transparent; color: #f87171; }
+QPushButton#danger:hover { background: #3a2328; }
+QPushButton#del { background: transparent; color: #8b8fa3; padding: 4px 8px; }
+QPushButton#del:hover { background: #383c4b; color: #ffffff; }
+QCheckBox { background: transparent; spacing: 8px; }
+QCheckBox::indicator {
+    width: 16px; height: 16px; border-radius: 4px;
+    border: 1px solid #5a5f78; background: #1e2028;
+}
+QCheckBox::indicator:checked { background: #8b5cf6; border-color: #8b5cf6; }
+QProgressBar { background: #2c2f3a; border: none; border-radius: 6px; }
+QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; border: none; }
+QScrollBar:vertical { background: transparent; width: 8px; }
+QScrollBar::handle:vertical { background: #383c4b; border-radius: 4px; min-height: 24px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }

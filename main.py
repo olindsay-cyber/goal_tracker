@@ -1,4 +1,4 @@
-"""Goal tracker built with PySide6 / Qt
+"""Goal tracker built with PySide6 / Qt.
 
 Install:  pip install PySide6
 Run:      python main.py
@@ -9,15 +9,13 @@ Features
     or a custom unit such as pages, calls or modules
   - Every logged session needs an amount and an activity description, and can be dated in the past
   - Export a formatted PDF progress report (summary, totals by month, activity log)
-  - Data is stored in goals.json next to this script. Files from earlier
-    versions are migrated automatically.
+  - Data is stored in goals.json next to this script
 """
 
 import html
 import json
 import os
 import sys
-import uuid
 from collections import OrderedDict
 from datetime import date, datetime
 
@@ -44,55 +42,25 @@ PAGE_SIZE = QPageSize.Letter
 
 PALETTE = ["#8b5cf6", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#14b8a6", "#6366f1"]
 
-STYLESHEET = """
-QWidget { background: #14151a; color: #e6e7eb; font-size: 13px; }
-QLabel { background: transparent; }
-QTabWidget::pane { border: none; }
-QTabBar::tab {
-    background: transparent; color: #8b8fa3; padding: 10px 20px;
-    font-weight: 600; border-bottom: 2px solid transparent;
-}
-QTabBar::tab:selected { color: #ffffff; border-bottom: 2px solid #e6e7eb; }
-QTabBar::tab:hover { color: #ffffff; }
-QFrame#card, QFrame#row { background: #1e2028; border-radius: 14px; }
-QFrame#row { border-radius: 10px; }
-QLineEdit, QDateEdit, QComboBox {
-    background: #1e2028; border: 1px solid #2c2f3a; border-radius: 8px; padding: 8px 10px;
-}
-QLineEdit:focus, QDateEdit:focus, QComboBox:focus { border: 1px solid #5a5f78; }
-QLineEdit:disabled { color: #5a5f78; }
-QComboBox QAbstractItemView {
-    background: #1e2028; border: 1px solid #2c2f3a; selection-background-color: #383c4b;
-}
-QPushButton {
-    background: #2c2f3a; border: none; border-radius: 8px; padding: 8px 16px; font-weight: 600;
-}
-QPushButton:hover { background: #383c4b; }
-QPushButton#primary { background: #e6e7eb; color: #14151a; }
-QPushButton#primary:hover { background: #ffffff; }
-QPushButton#danger { background: transparent; color: #f87171; }
-QPushButton#danger:hover { background: #3a2328; }
-QPushButton#del { background: transparent; color: #8b8fa3; padding: 4px 8px; }
-QPushButton#del:hover { background: #383c4b; color: #ffffff; }
-QCheckBox { background: transparent; spacing: 8px; }
-QCheckBox::indicator {
-    width: 16px; height: 16px; border-radius: 4px;
-    border: 1px solid #5a5f78; background: #1e2028;
-}
-QCheckBox::indicator:checked { background: #8b5cf6; border-color: #8b5cf6; }
-QProgressBar { background: #2c2f3a; border: none; border-radius: 6px; }
-QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; border: none; }
-QScrollBar:vertical { background: transparent; width: 8px; }
-QScrollBar::handle:vertical { background: #383c4b; border-radius: 4px; min-height: 24px; }
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-"""
+# Visual theme. Edit style.qss to restyle the app (restart to apply changes).
+STYLE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "style.qss")
+
+
+def load_stylesheet():
+    try:
+        with open(STYLE_FILE, "r", encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        print(f"Warning: could not read {STYLE_FILE}; using the default Qt look.", file=sys.stderr)
+        return ""
+
 
 
 # ---------------------------------------------------------------------------
 # Goal model
 #
 # A goal is a dict:
-#   id, name, color, target, sessions
+#   name, kind, unit, color, target, sessions
 #   kind: "time"  -> sessions store {"date", "minutes", "note"}; target is in hours
 #   kind: "count" -> sessions store {"date", "amount",  "note"}; target is in `unit`
 # The JSON key "note" holds the activity description (kept for compatibility).
@@ -100,7 +68,6 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 
 def new_goal(name, kind, unit, target, color):
     return {
-        "id": uuid.uuid4().hex[:8],
         "name": name,
         "kind": kind,
         "unit": "hours" if kind == "time" else unit,
@@ -111,7 +78,7 @@ def new_goal(name, kind, unit, target, color):
 
 
 def is_time(goal):
-    return goal.get("kind", "time") == "time"
+    return goal["kind"] == "time"
 
 
 def unit_name(goal):
@@ -167,40 +134,29 @@ def pick_color(goals):
 
 def default_data():
     """A fresh install starts with no goals; the user adds their own."""
-    return {"version": 3, "settings": {"prepared_by": ""}, "goals": []}
+    return {"settings": {"prepared_by": ""}, "goals": []}
 
 
 def normalize(raw):
-    """Accept the current format or older ones (including {"soft_skills": {...}, ...})."""
-    if not isinstance(raw, dict):
-        return default_data()
-
-    is_current = isinstance(raw.get("goals"), list)
-    if is_current:
-        goals_raw = raw["goals"]
-        settings = raw.get("settings") if isinstance(raw.get("settings"), dict) else {}
-    else:
-        goals_raw = [
-            {"id": key, **value}
-            for key, value in raw.items()
-            if isinstance(value, dict) and "sessions" in value
-        ]
-        settings = {}
+    """Validate loaded data, dropping malformed entries. Raises ValueError if the
+    file isn't in the expected shape."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("goals"), list):
+        raise ValueError("unrecognized data format")
+    settings = raw.get("settings") if isinstance(raw.get("settings"), dict) else {}
 
     goals = []
-    for g in goals_raw:
+    for g in raw["goals"]:
         if not isinstance(g, dict):
             continue
         kind = "count" if g.get("kind") == "count" else "time"
         try:
-            target = float(g.get("target", g.get("target_hours", 20)))
+            target = float(g.get("target", 20))
         except (TypeError, ValueError):
             target = 20.0
         if target <= 0:
             target = 20.0
         goal = {
-            "id": str(g.get("id") or uuid.uuid4().hex[:8]),
-            "name": str(g.get("name") or g.get("label") or "Untitled goal"),
+            "name": str(g.get("name") or "Untitled goal"),
             "kind": kind,
             "unit": "hours" if kind == "time" else str(g.get("unit") or "units"),
             "target": target,
@@ -220,9 +176,7 @@ def normalize(raw):
             })
         goals.append(goal)
 
-    if not is_current and not goals:
-        return default_data()
-    return {"version": 3, "settings": {"prepared_by": str(settings.get("prepared_by", ""))}, "goals": goals}
+    return {"settings": {"prepared_by": str(settings.get("prepared_by", ""))}, "goals": goals}
 
 
 def load_data():
@@ -231,7 +185,7 @@ def load_data():
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
             return normalize(json.load(f))
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError, ValueError):
         # Keep the unreadable file instead of silently overwriting it later.
         try:
             os.replace(DATA_FILE, DATA_FILE + ".corrupt")
@@ -432,7 +386,7 @@ def write_pdf(path, html_text):
 
 class NewGoalDialog(QDialog):
     TIME_DEFAULT = "20"
-    COUNT_DEFAULT = "100"
+    COUNT_DEFAULT = "10"
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -509,7 +463,6 @@ class ExportDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Export PDF report")
         self.setMinimumWidth(400)
-        self.goals = goals
 
         layout = QVBoxLayout(self)
         layout.setSpacing(10)
@@ -922,7 +875,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyleSheet(STYLESHEET)
+    app.setStyleSheet(load_stylesheet())
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

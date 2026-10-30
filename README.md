@@ -16,6 +16,7 @@ Built with Python and PySide6 (Qt). Works on Windows and Linux.
 - PDF report with a summary, totals by month and a full activity log,
   filterable by date range and goal
 - Data saved to `goals.json` next to `main.py`
+- Theme in `style.qss` (next to `main.py`), so you can restyle the app without touching the code
 
 ## Setup
 
